@@ -19,7 +19,7 @@ JSON_URL_SUFFIX = "api/json"
 FIRST_WRITABLE_CELL_INDEX = 2
 
 # The next cell index (row number) to use on the parent spreadsheet when we encounter
-# a test failure we haven't seen before. Because only agg statistics are reported
+# a test failure we haven't seen before. Because only aggregate statistics are reported
 # on the parent spreadsheet, we only need to keep track of one index here.
 _parent_next_cell_index = FIRST_WRITABLE_CELL_INDEX
 def parent_next_cell_index():
@@ -29,7 +29,7 @@ def parent_next_cell_index():
     return index
 
 # Project name -> next cell indices on the corresponding worksheet.
-# On project worksheets we maintain both the agg statistics and a list of all
+# On project worksheets we maintain both the aggregate statistics and a list of all
 # test failures we have observed so far. In the latter case, we append to the list
 # whether or not we have seen the test failure occur in this project before.
 _project_next_cell_index = { }
@@ -145,7 +145,7 @@ class FailedTestInfo:
         '''
         return sum(self.project_counts.values())
 
-def new_distinct_failed_test(suite_name, project_name):
+def new_distinct_failed_suite(suite_name, project_name):
     '''
     Callback invoked when we encounter a failed test we have never seen before.
     This updates the parent worksheet and returns the relevant FailedTestInfo object.
@@ -155,11 +155,11 @@ def new_distinct_failed_test(suite_name, project_name):
     update_parent_cell("B%d" % parent_cell_index, 1)
     return FailedTestInfo(suite_name, parent_cell_index)
 
-def new_failed_test(test_info, url, date, project_name):
+def new_failed_suite(test_info, num_failed_tests, url, date, project_name):
     '''
-    Callback invoked when we encounter a failed test.
+    Callback invoked when we encounter a failed suite.
     
-    This updates the agg statistics on both the parent worksheet and the
+    This updates the aggregate statistics on both the parent worksheet and the
     child worksheet that corresponds to the project. In the latter case, we also
     report information that is specific to this instance of the failed test.
     '''
@@ -182,8 +182,9 @@ def new_failed_test(test_info, url, date, project_name):
     project_ws.update_acell("B%d" % project_agg_cell_index, project_count)
     project_ws.update_acell("D%d" % project_cell_index,\
         "=HYPERLINK(\"%s\"; \"%s\")" % (url, suite_name))
-    project_ws.update_acell("E%d" % project_cell_index, parse_hadoop(url))
-    project_ws.update_acell("F%d" % project_cell_index, date)
+    project_ws.update_acell("E%d" % project_cell_index, num_failed_tests)
+    project_ws.update_acell("F%d" % project_cell_index, parse_hadoop(url))
+    project_ws.update_acell("G%d" % project_cell_index, date)
 
 # ---------------------- #
 #  Other helper methods  #
@@ -218,6 +219,7 @@ def fetch_json(url):
     Fetch a JSON from the specified URL and return the JSON as string.
     If an exception occurs in the process, return None.
     '''
+    increase_indent()
     try:
         raw_content = urlopen(url).read()
         return json.loads(raw_content, strict = False)
@@ -234,6 +236,8 @@ def fetch_json(url):
     except Exception as e:
         e_msg = _indent + str(e)
         log_error("Failed to fetch JSON from %s:\n%s" % (shorten(url), e_msg))
+    finally:
+        decrease_indent()
     return None
 
 def is_pull_request_builder(project_name):
