@@ -244,7 +244,7 @@ def is_pull_request_builder(project_name):
     return "pullrequestbuilder" in project_name.lower()
 
 def parse_hadoop(url):
-    split_keys = ["AMPLAB_JENKINS_BUILD_PROFILE", "hadoop.version"]
+    split_keys = ["AMPLAB_JENKINS_BUILD_PROFILE", "hadoop.version", "HADOOP_PROFILE"]
     for split_key in split_keys:
         if split_key in url:
             return url.split("%s=" % split_key)[1].split(",")[0]
