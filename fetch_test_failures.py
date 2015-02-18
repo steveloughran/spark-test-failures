@@ -61,7 +61,7 @@ def report():
     Note that separately we have already been reporting to the Google spreadsheet.
     '''
     log_info("===== Test failures =====")
-    failed_test_occurrences = sorted(failed_tests.items(), key=lambda x: x[1].count())
+    failed_test_occurrences = sorted(failed_tests.items(), key=lambda x: -x[1].count())
     for (k, v) in failed_test_occurrences:
         log_info("%s: %s" % (k, v.count()))
 
@@ -89,15 +89,21 @@ def handle_build(build, project_name):
     build_url = "%s/%s/%s/%s" % (JENKINS_URL_BASE, project_name, build_number, JSON_URL_SUFFIX)
     build = fetch_json(build_url)
     if build and filter_build(build):
-        runs = build["runs"]
         date = build["id"]
-        for run in runs:
-            # e.g. https://amplab.cs.berkeley.edu/jenkins/job/Spark-1.3-SBT/
-            # AMPLAB_JENKINS_BUILD_PROFILE=hadoop1.0,label=centos/80/
-            run_url = run["url"]
-            if run_url.endswith("/"):
-                run_url = run_url[:-1]
+        # Refresh the gspread client every build to avoid HTTP exceptions
+        refresh_gspread_client()
+        # Each build in the pull request builder only has one run, so use the build URL directly
+        if is_pull_request_builder(project_name):
+            run_url = "%s/%s/%s" % (JENKINS_URL_BASE, project_name, build_number)
             handle_run(run_url, date, project_name)
+        else:
+            for run in build["runs"]:
+                # e.g. https://amplab.cs.berkeley.edu/jenkins/job/Spark-1.3-SBT/
+                # AMPLAB_JENKINS_BUILD_PROFILE=hadoop1.0,label=centos/80/
+                run_url = run["url"]
+                if run_url.endswith("/"):
+                    run_url = run_url[:-1]
+                handle_run(run_url, date, project_name)
     decrease_indent()
 
 def filter_build(build):
@@ -123,14 +129,25 @@ def handle_run(run_url, date, project_name):
         num_failed_tests = int(json_test_result["failCount"])
         if num_failed_tests > 0:
             s = "s" if num_failed_tests > 1 else ""
-            log_debug("Found %s failed test%s" % (num_failed_tests, s))
-            # Find the failed tests by linearly scanning through the JSON
-            # Unfortunately there is not a way to retrieve the failed tests from an index
+            log_info("Found %s failed test%s" % (num_failed_tests, s))
+            # Suite name -> number of occurrences in this run
+            failed_suite_counts = { }
             for suite in json_test_result["suites"]:
                 for case in suite["cases"]:
                     if case["status"] != "PASSED":
                         suite_name = case["className"]
-                        handle_test(suite_name, run_url, date, project_name)
+                        if suite_name not in failed_suite_counts:
+                            handle_test(suite_name, run_url, date, project_name)
+                            failed_suite_counts[suite_name] = 0
+                        failed_suite_counts[suite_name] += 1
+            # Report to the console which suites failed how many times in this run
+            increase_indent()
+            for (suite_name, count) in failed_suite_counts.items():
+                if count == 1:
+                    log_info(suite_name)
+                else:
+                    log_info("%s (%s)" % (suite_name, count))
+            decrease_indent()
     decrease_indent()
 
 def handle_test(suite_name, url, date, project_name):
@@ -138,11 +155,13 @@ def handle_test(suite_name, url, date, project_name):
     Report a failed test on the spreadsheet.
     '''
     increase_indent()
-    log_debug(suite_name)
-    if suite_name not in failed_tests:
-        failed_tests[suite_name] = new_distinct_failed_test(suite_name, project_name)
-    test_info = failed_tests[suite_name]
-    new_failed_test(test_info, url, date, project_name)
+    try:
+        if suite_name not in failed_tests:
+            failed_tests[suite_name] = new_distinct_failed_test(suite_name, project_name)
+        test_info = failed_tests[suite_name]
+        new_failed_test(test_info, url, date, project_name)
+    except Exception as e:
+        log_error("Exception when handling test %s: %s" % (suite_name, e))
     decrease_indent()
 
 # Do the fetching!

@@ -226,6 +226,13 @@ def fetch_json(url):
         log_error("Failed to fetch JSON from %s:\n%s" % (shorten(url), e_msg))
         return None
 
+def is_pull_request_builder(project_name):
+    return "pullrequestbuilder" in project_name.lower()
+
 def parse_hadoop(url):
-    return url.split("AMPLAB_JENKINS_BUILD_PROFILE=")[1].split(",label")[0]
+    split_keys = ["AMPLAB_JENKINS_BUILD_PROFILE", "hadoop.version"]
+    for split_key in split_keys:
+        if split_key in url:
+            return url.split("%s=" % split_key)[1].split(",")[0]
+    return "N/A"
 
