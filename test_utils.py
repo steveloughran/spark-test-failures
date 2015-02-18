@@ -7,7 +7,7 @@
 import gspread
 import json
 import time
-import urllib2
+from urllib2 import *
 
 from test_settings import *
 
@@ -219,12 +219,22 @@ def fetch_json(url):
     If an exception occurs in the process, return None.
     '''
     try:
-        raw_content = urllib2.urlopen(url).read()
+        raw_content = urlopen(url).read()
         return json.loads(raw_content, strict = False)
+    except HTTPError as he:
+        if he.code == 404:
+            # 404's are very common, e.g. if the build doesn't even compile
+            # In this case it's not really an error, so we should tone down
+            # the severity of the log message
+            log_info("Unable to find JSON at %s" % shorten(url))
+        else:
+            he_msg = _indent + str(he)
+            log_error("Encountered HTTP error when fetching JSON from %s:\n%s"\
+                % (shorten(url), he_msg))
     except Exception as e:
         e_msg = _indent + str(e)
         log_error("Failed to fetch JSON from %s:\n%s" % (shorten(url), e_msg))
-        return None
+    return None
 
 def is_pull_request_builder(project_name):
     return "pullrequestbuilder" in project_name.lower()
