@@ -5,8 +5,10 @@
 # ----------------------------------------- #
 
 # List of projects to fetch failed test results from
+# Do not include the pull request builder by default because many test
+# failures there are caused by contributor mistakes instead of flakiness
 SPARK_PROJECTS = []
-SPARK_PROJECTS += ["SparkPullRequestBuilder"]
+#SPARK_PROJECTS += ["SparkPullRequestBuilder"]
 SPARK_PROJECTS += ["Spark-Master-Maven-with-YARN"]
 SPARK_PROJECTS += ["Spark-Master-SBT"]
 SPARK_PROJECTS += ["Spark-1.3-SBT"]
