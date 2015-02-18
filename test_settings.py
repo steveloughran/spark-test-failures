@@ -9,8 +9,9 @@
 # failures there are caused by contributor mistakes instead of flakiness
 SPARK_PROJECTS = []
 #SPARK_PROJECTS += ["SparkPullRequestBuilder"]
-SPARK_PROJECTS += ["Spark-Master-Maven-with-YARN"]
 SPARK_PROJECTS += ["Spark-Master-SBT"]
+SPARK_PROJECTS += ["Spark-Master-Maven-pre-YARN"]
+SPARK_PROJECTS += ["Spark-Master-Maven-with-YARN"]
 SPARK_PROJECTS += ["Spark-1.3-SBT"]
 SPARK_PROJECTS += ["Spark-1.3-Maven-pre-YARN"]
 SPARK_PROJECTS += ["Spark-1.3-Maven-with-YARN"]

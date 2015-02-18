@@ -32,6 +32,7 @@ def initialize():
     worksheets and populating them with the appropriate headers.
     '''
     refresh_worksheets()
+    log_info("Populating headers in spreadsheet. Please wait a moment...")
     # The parent worksheet only has aggregate statistics
     update_parent_cell("A1", "Suite name")
     update_parent_cell("B1", "Runs failed")
@@ -121,8 +122,8 @@ def handle_run(run_url, date, project_name):
     '''
     Fetch and report failed tests for a particular run.
     '''
-    increase_indent()
     log_debug("Handle run %s" % shorten(run_url))
+    increase_indent()
     test_report_url = "%s/%s/%s" % (run_url, "testReport", JSON_URL_SUFFIX)
     test_report_url_short = test_report_url.replace(JENKINS_URL_BASE, "")
     test_report = fetch_json(test_report_url)
@@ -150,17 +151,14 @@ def handle_suite(suite_name, num_failed_tests, url, date, project_name):
     Report a failed test on the spreadsheet.
     '''
     increase_indent()
-    try:
-        if num_failed_tests == 1:
-            log_info(suite_name)
-        else:
-            log_info("%s (%s)" % (suite_name, num_failed_tests))
-        if suite_name not in failed_suites:
-            failed_suites[suite_name] = new_distinct_failed_suite(suite_name, project_name)
-        test_info = failed_suites[suite_name]
-        new_failed_suite(test_info, num_failed_tests, url, date, project_name)
-    except Exception as e:
-        log_error("Exception when handling suite %s: %s" % (suite_name, e.message))
+    if num_failed_tests == 1:
+        log_info(suite_name)
+    else:
+        log_info("%s (%s)" % (suite_name, num_failed_tests))
+    if suite_name not in failed_suites:
+        failed_suites[suite_name] = new_distinct_failed_suite(suite_name, project_name)
+    test_info = failed_suites[suite_name]
+    new_failed_suite(test_info, num_failed_tests, url, date, project_name)
     decrease_indent()
 
 # Do the fetching!

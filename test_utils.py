@@ -219,7 +219,6 @@ def fetch_json(url):
     Fetch a JSON from the specified URL and return the JSON as string.
     If an exception occurs in the process, return None.
     '''
-    increase_indent()
     try:
         raw_content = urlopen(url).read()
         return json.loads(raw_content, strict = False)
@@ -236,8 +235,6 @@ def fetch_json(url):
     except Exception as e:
         e_msg = _indent + str(e)
         log_error("Failed to fetch JSON from %s:\n%s" % (shorten(url), e_msg))
-    finally:
-        decrease_indent()
     return None
 
 def is_pull_request_builder(project_name):
