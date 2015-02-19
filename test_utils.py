@@ -4,6 +4,7 @@
 #  Utility methods used by fetch_test_failures.py  #
 # ------------------------------------------------ #
 
+import datetime
 import gspread
 import json
 import time
@@ -132,6 +133,7 @@ class FailedTestInfo:
         self.parent_cell_index = parent_cell_index
         self.project_cell_indices = { } # project name -> cell index
         self.project_counts = { } # project name -> occurrences
+        self.most_recent_failure = -1 # UTC timestamp in seconds
 
     def in_project(self, project_name):
         '''
@@ -170,8 +172,13 @@ def new_failed_suite(test_info, num_failed_tests, url, date, project_name):
             project_next_agg_cell_index(project_name)
         test_info.project_counts[project_name] = 0
     test_info.project_counts[project_name] += 1
-    # Update parent agg count
+    # Update parent statistics
     update_parent_cell("B%d" % test_info.parent_cell_index, test_info.count())
+    utc_timestamp = date_to_utc_timestamp(date)
+    if utc_timestamp > test_info.most_recent_failure:
+        test_info.most_recent_failure = utc_timestamp
+        update_parent_cell("C%d" % test_info.parent_cell_index, \
+            "=HYPERLINK(\"%s\"; \"%s\")" % (url, date))
     # Update project-specific worksheet
     suite_name = test_info.suite_name
     project_cell_index = project_next_cell_index(project_name)
@@ -239,6 +246,18 @@ def fetch_json(url):
 
 def is_pull_request_builder(project_name):
     return "pullrequestbuilder" in project_name.lower()
+
+def date_to_utc_timestamp(date_time):
+    '''
+    Convert the date time string using the format "yy-mm-dd_hh-mm-ss"
+    to a UTC timestamp in seconds.
+    '''
+    # e.g. 2015-02-18_04-26-29 -> 1424262389.0
+    (my_date, my_time) = date_time.split("_")
+    (year, month, day) = [int(x) for x in my_date.split("-")]
+    (hour, minute, second) = [int(x) for x in my_time.split("-")]
+    dt = datetime.datetime(year, month, day, hour, minute, second)
+    return time.mktime(dt.timetuple())
 
 def parse_hadoop(url):
     split_keys = ["AMPLAB_JENKINS_BUILD_PROFILE", "hadoop.version", "HADOOP_PROFILE"]

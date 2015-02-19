@@ -36,6 +36,7 @@ def initialize():
     # The parent worksheet only has aggregate statistics
     update_parent_cell("A1", "Suite name")
     update_parent_cell("B1", "Runs failed")
+    update_parent_cell("C1", "Most recent failure")
     for ws in all_worksheets():
         title = ws.title
         if title in SPARK_PROJECTS:
@@ -76,9 +77,10 @@ def handle_project(project_name):
     # e.g. https://amplab.cs.berkeley.edu/jenkins/job/Spark-1.3-SBT/api/json
     project_url = "%s/%s/%s" % (JENKINS_URL_BASE, project_name, JSON_URL_SUFFIX)
     project = fetch_json(project_url)
-    builds = project["builds"]
-    for build in builds:
-        handle_build(build, project_name)
+    if project:
+        builds = project["builds"]
+        for build in builds:
+            handle_build(build, project_name)
 
 def handle_build(build, project_name):
     '''
@@ -128,10 +130,10 @@ def handle_run(run_url, date, project_name):
     test_report_url_short = test_report_url.replace(JENKINS_URL_BASE, "")
     test_report = fetch_json(test_report_url)
     if test_report:
-        num_failed_suites = int(test_report["failCount"])
-        if num_failed_suites > 0:
-            s = "s" if num_failed_suites > 1 else ""
-            log_info("Found %s failed suite%s" % (num_failed_suites, s))
+        num_failed_tests = int(test_report["failCount"])
+        if num_failed_tests > 0:
+            s = "s" if num_failed_tests > 1 else ""
+            log_info("Found %s failed test%s" % (num_failed_tests, s))
             # Suite name -> number of occurrences in this run
             failed_suite_counts = { }
             for suite in test_report["suites"]:
