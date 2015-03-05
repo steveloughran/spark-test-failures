@@ -8,7 +8,7 @@
 # Do not include the pull request builder by default because many test
 # failures there are caused by contributor mistakes instead of flakiness
 SPARK_PROJECTS = []
-#SPARK_PROJECTS += ["SparkPullRequestBuilder"]
+SPARK_PROJECTS += ["SparkPullRequestBuilder"]
 SPARK_PROJECTS += ["Spark-Master-SBT"]
 SPARK_PROJECTS += ["Spark-Master-Maven-pre-YARN"]
 SPARK_PROJECTS += ["Spark-Master-Maven-with-YARN"]
@@ -34,5 +34,5 @@ SPREADSHEET_PASSWORD = "tester1700"
 SPREADSHEET_TITLE = "Spark Test Failures"
 
 # How far back to go before a build is considered too old (seconds)
-MAX_BUILD_AGE = 3600 * 24 * 7
+MAX_BUILD_AGE = 3600 * 24 * 30
 

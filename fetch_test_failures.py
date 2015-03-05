@@ -1,55 +1,30 @@
 #!/usr/bin/env python
 #
-# This file represents the main entry point of fetching test results from Jenkins.
+# This script produces a CSV file where each line represents a failed instance
+# of a test suite.
 #
-# There are two separate reporting mechanisms: the first one populates a Google
-# spreadsheet while thie script is running, and the other reports aggregate statistics
-# to the console at the very end.
-#
-# The high level workflow is as follows. First, we initialize the spreadsheet and
-# other necessary state using the configurations specified in test_settings.py.
-# Then, we fetch test reports for each configured project, posting information for
-# any test failures we encounter in the process to the spreadsheet. For each project,
-# there are many builds, of which we only consider the ones that are recent enough
-# (we determine this using a configurable threshold).
-#
-# The existing first-cut implementation is heavily tied to the use of Google
-# spreadsheets. In the future, if we decide to use another mechanism of reporting,
-# we may need to refactor the layout a little.
+# For each Spark Jenkins project, there are many builds, of which we only consider
+# the ones that are recent enough (we determine this using a configurable threshold).
+# Then, within each build there are many runs, and within each run there can be many
+# failed suites. For each failed suite, we log one line of information that describes
+# this particular instance of the failure to the output file.
 
 import time
 
 from test_settings import *
 from test_utils import *
 
-# Suite name -> FailedTestInfo
-failed_suites = { }
-
 # Workflow: initialize() -> run() -> report()
+
+schema = ["Suite name", "Project name", "Tests failed",
+  "Hadoop profile", "Hadoop version", "Timestamp", "URL"]
+
 def initialize():
     '''
-    Initialize the spreadsheet by creating the appropriate
-    worksheets and populating them with the appropriate headers.
+    Write the schema as the first line of the output file.
     '''
-    refresh_worksheets()
-    log_info("Populating headers in spreadsheet. Please wait a moment...")
-    # The parent worksheet only has aggregate statistics
-    update_parent_cell("A1", "Suite name")
-    update_parent_cell("B1", "Runs failed")
-    update_parent_cell("C1", "Most recent failure")
-    for ws in all_worksheets():
-        title = ws.title
-        if title in SPARK_PROJECTS:
-            # The project-specific worksheet has both aggregate statistics
-            ws.update_acell("A1", "Suite name")
-            ws.update_acell("B1", "Runs failed")
-            # ... and information for individual test failures
-            ws.update_acell("D1", "Suite name")
-            ws.update_acell("E1", "Tests failed")
-            ws.update_acell("F1", "Hadoop version")
-            ws.update_acell("G1", "Date and time")
-            project_worksheets[title] = ws
-    refresh_gspread_client()
+    write_output(OUTPUT_DELIMITER.join(schema))
+    flush_output()
 
 def run():
     '''
@@ -59,18 +34,12 @@ def run():
         handle_project(project)
 
 def report():
-    '''
-    Report on the console the aggregate statistics of all test failures encountered.
-    Note that separately we have already been reporting to the Google spreadsheet.
-    '''
-    log_info("===== Test failures =====")
-    failed_test_occurrences = sorted(failed_suites.items(), key=lambda x: -x[1].count())
-    for (k, v) in failed_test_occurrences:
-        log_info("%s: %s" % (k, v.count()))
+    log_info("===== See results in %s =====" % OUTPUT_FILE_NAME)
+    close_output()
 
 def handle_project(project_name):
     '''
-    Fetch and report failed tests for all filtered builds in the project.
+    Fetch and report failed suites for all filtered builds in the project.
     This assumes a highly specific JSON format exposed by Jenkins.
     '''
     log_debug("===== Fetching test results from project %s =====" % project_name)
@@ -84,15 +53,14 @@ def handle_project(project_name):
 
 def handle_build(build, project_name):
     '''
-    Fetch and report failed tests for all runs in the build,
-    where each run is configured with a different hadoop profile.
+    Fetch and report failed suites for all runs in the build, where
+    each run is configured with a different hadoop profile.
     '''
     increase_indent()
     build_number = build["number"]
     # e.g. https://amplab.cs.berkeley.edu/jenkins/job/Spark-1.3-SBT/80/api/json
     build_url = "%s/%s/%s/%s" % (JENKINS_URL_BASE, project_name, build_number, JSON_URL_SUFFIX)
     # Refresh the gspread client every build to avoid HTTP exceptions
-    refresh_gspread_client()
     build = fetch_json(build_url)
     if build and filter_build(build):
         build_date = build["id"]
@@ -112,7 +80,7 @@ def handle_build(build, project_name):
 
 def filter_build(build):
     '''
-    Return true if we should fetch the test results of this build, and false otherwise.
+    Return true if we should process this build; false otherwise.
     This filters out old builds based on a threshold configured by the user.
     '''
     timestamp = int(build["timestamp"]) / 1000 # s
@@ -122,7 +90,7 @@ def filter_build(build):
 
 def handle_run(run_url, date, project_name):
     '''
-    Fetch and report failed tests for a particular run.
+    Fetch and report failed suites for a particular run.
     '''
     log_debug("Handle run %s" % shorten(run_url))
     increase_indent()
@@ -150,17 +118,28 @@ def handle_run(run_url, date, project_name):
 
 def handle_suite(suite_name, num_failed_tests, url, date, project_name):
     '''
-    Report a failed test on the spreadsheet.
+    Report a failed suite by logging its information to the output file.
     '''
     increase_indent()
     if num_failed_tests == 1:
         log_info(suite_name)
     else:
         log_info("%s (%s)" % (suite_name, num_failed_tests))
-    if suite_name not in failed_suites:
-        failed_suites[suite_name] = new_distinct_failed_suite(suite_name, project_name)
-    test_info = failed_suites[suite_name]
-    new_failed_suite(test_info, num_failed_tests, url, date, project_name)
+
+    # Extract fields from parameters
+    if is_pull_request_builder(project_name):
+        hadoop_profile = "2.3.0"
+    else:
+        hadoop_profile = parse_hadoop_profile(url)
+    hadoop_version = get_hadoop_version(hadoop_profile)
+    timestamp = date_to_utc_timestamp(date)
+
+    # Populate the output file with information about this failed suite
+    row = [suite_name, project_name, num_failed_tests,
+            hadoop_profile, hadoop_version, timestamp, url]
+    row = [str(x).replace(OUTPUT_DELIMITER, "_") for x in row]
+    row = OUTPUT_DELIMITER.join(row)
+    write_output(row)
     decrease_indent()
 
 # Do the fetching!
