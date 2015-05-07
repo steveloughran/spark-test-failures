@@ -26,6 +26,9 @@ private[fetcher] class JenkinsFetcher(
   private val jsonMapper = new ObjectMapper
   private val writer = new FileWriter(outputFileName)
   private var indent = ""
+  private val maxTestAgeMillis = Option(maxTestAgeSeconds * 1000)
+    .filter(_ >= 0)
+    .getOrElse(Long.MaxValue)
 
   log(s"Fetching Jenkins test reports from ${JENKINS_URL_BASE}/[...]")
   log(s"Logging test failure information to ${outputFileName}\n")
@@ -56,9 +59,10 @@ private[fetcher] class JenkinsFetcher(
   private def handleProject(projectUrl: String, projectName: String): Unit = {
     log(s"========== Fetching test reports for project $projectName ==========")
     val projectJson = fetchJson(projectUrl).getOrElse { return }
-    val buildsJson = projectJson.get("builds")
-    buildsJson.iterator.foreach { buildJson =>
-      val buildNumber = buildJson.get("number").asInt
+    val firstBuild = projectJson.get("firstBuild").get("number").asInt
+    val lastBuild = projectJson.get("lastBuild").get("number").asInt
+    assert(lastBuild >= firstBuild)
+    (firstBuild to lastBuild).reverse.foreach { buildNumber =>
       val buildUrl = s"${projectUrl}/$buildNumber"
       handleBuild(buildUrl, projectName)
     }
@@ -70,7 +74,7 @@ private[fetcher] class JenkinsFetcher(
   private def handleBuild(buildUrl: String, projectName: String): Unit = {
     val buildJson = fetchJson(buildUrl).getOrElse { return }
     val buildTimestamp = buildJson.get("timestamp").asLong
-    val buildTooOld = System.currentTimeMillis - buildTimestamp > maxTestAgeSeconds * 1000
+    val buildTooOld = System.currentTimeMillis - buildTimestamp > maxTestAgeMillis
     if (!buildTooOld) {
       // Each build in the pull request builder only has one run, so use the build URL directly
       if (isPullRequestBuilder(projectName)) {
@@ -96,25 +100,30 @@ private[fetcher] class JenkinsFetcher(
     val testReportJson = fetchJson(testReportUrl).getOrElse { return }
     val numTestsFailed = testReportJson.get("failCount").asInt
     if (numTestsFailed > 0) {
-      log(s"Found $numTestsFailed failed test(s)")
-      // Suite name -> number of failed occurrences in this run
-      val failedSuiteCounts = new mutable.HashMap[String, Int]
-      val failedSuiteStatuses = Set("FAILED", "REGRESSION")
-      val suitesJson = testReportJson.get("suites")
-      suitesJson.iterator.foreach { suiteJson =>
-        val failedSuiteNames = suiteJson.get("cases").iterator
-          .filter { caseJson => failedSuiteStatuses.contains(caseJson.get("status").asText) }
-          .map { _.get("className").asText }
-          .filter { _.startsWith("org.apache.spark") }
-        failedSuiteNames.foreach { suiteName =>
-          if (!failedSuiteCounts.contains(suiteName)) {
-            failedSuiteCounts(suiteName) = 0
+      wrapForIndentation {
+        log(s"Found $numTestsFailed failed test(s)")
+        // Suite name -> number of failed occurrences in this run
+        val failedSuiteCounts = new mutable.HashMap[String, Int]
+        val failedSuiteStatuses = Set("FAILED", "REGRESSION")
+        val suitesJson = testReportJson.get("suites")
+        suitesJson.iterator.foreach { suiteJson =>
+          val failedSuiteNames = suiteJson.get("cases").iterator
+            .filter { caseJson => failedSuiteStatuses.contains(caseJson.get("status").asText) }
+            .map { _.get("className").asText }
+            .filter { _.startsWith("org.apache.spark") }
+          failedSuiteNames.foreach { suiteName =>
+            if (!failedSuiteCounts.contains(suiteName)) {
+              failedSuiteCounts(suiteName) = 0
+            }
+            failedSuiteCounts(suiteName) += 1
           }
-          failedSuiteCounts(suiteName) += 1
         }
-      }
-      failedSuiteCounts.foreach { case (suiteName, numTestsFailed) =>
-        handleSuite(suiteName, numTestsFailed, runUrl, runTimestamp, projectName)
+        failedSuiteCounts.foreach { case (suiteName, numTestsFailed) =>
+          handleSuite(suiteName, numTestsFailed, runUrl, runTimestamp, projectName)
+        }
+        if (failedSuiteCounts.isEmpty) {
+          log("Warning: No failed suites beginning with org.apache.spark.* found.")
+        }
       }
     }
   }
