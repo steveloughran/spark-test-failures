@@ -16,7 +16,7 @@ import com.databricks.util.{FailedSuite, PropertiesReader}
  * information to a CSV output file. Each line in output file represents
  * a single instance of a failed suite.
  */
-private[fetcher] class JenkinsFetcher(
+class JenkinsFetcher(
     val allJenkinsProjects: Seq[String],
     val outputFileName: String,
     val outputFileDelimiter: String,

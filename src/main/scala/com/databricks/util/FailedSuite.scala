@@ -6,7 +6,7 @@ import org.apache.spark.sql.Row
  * A simple struct for keeping track of information about
  * a particular failure instance of a test suite.
  */
-private[databricks] case class FailedSuite(
+case class FailedSuite(
     suiteName: String,
     projectName: String,
     numTestsFailed: Int,
@@ -15,7 +15,7 @@ private[databricks] case class FailedSuite(
     time: Long,
     url: String)
 
-private[databricks] object FailedSuite {
+object FailedSuite {
 
   // Human readable schema that describes the fields of a FailedSuite
   val schema = Seq("Suite name", "Project name", "Tests failed",
