@@ -17,7 +17,7 @@ import com.google.gdata.client.spreadsheet.SpreadsheetService
 import com.google.gdata.data.PlainTextConstruct
 import com.google.gdata.data.spreadsheet._
 
-import com.databricks.util.{FailedSuite, PropertiesReader}
+import com.databricks.util.PropertiesReader
 
 /**
  * A reporter that populates a Google spreadsheet with test failure information.
@@ -102,7 +102,7 @@ private[reporter] class GoogleSpreadsheetReporter(
         feed.insert(new CellEntry(row, 6, failedSuite.hadoopProfile))
         feed.insert(new CellEntry(row, 7, failedSuite.hadoopVersion))
         val dateTime = DateFormat.getDateTimeInstance(
-          DateFormat.LONG, DateFormat.LONG).format(failedSuite.time)
+          DateFormat.LONG, DateFormat.LONG).format(failedSuite.timestamp)
         feed.insert(new CellEntry(row, 8, dateTime))
         row += 1
       }

@@ -12,7 +12,7 @@ case class FailedSuite(
     numTestsFailed: Int,
     hadoopProfile: String,
     hadoopVersion: String,
-    time: Long,
+    timestamp: Long,
     url: String)
 
 object FailedSuite {
@@ -32,7 +32,7 @@ object FailedSuite {
       row.getInt(2),    // numTestsFailed
       row.getString(3), // hadoopProfile
       row.getString(4), // hadoopVersion
-      row.getLong(5),   // time
+      row.getLong(5),   // timestamp
       row.getString(6)) // url
  }
 }
