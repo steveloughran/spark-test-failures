@@ -113,19 +113,26 @@
           <arguments>
             <argument>-classpath</argument>
             <classpath/>
+
+            <!--
             <argument>-Dspark.test.jenkins.url.base=https://amplab.cs.berkeley.edu/jenkins/job</argument>
-<!--
+            <argument>-Dspark.test.jenkinsProjects=Spark-1.5-Maven-with-YARN</argument>
+            <argument>-Dspark.test.packages=org.apache.spark</argument>
+
             <argument>-Dspark.test.jenkinsProjects=SparkPullRequestBuilder</argument>
             <argument>-Dspark.test.jenkinsProjects=Spark-Master-SBT</argument>
             <argument>-Dspark.test.empty.column=(N/A)</argument>
+            <argument>-Dspark.test.outputFileDelimiter=,</argument>
+            // 48h
+            <argument>-Dspark.test.fetcher.maxTestAge.seconds=172800</argument>
 
 -->
-            <argument>-Dspark.test.jenkinsProjects=Spark-1.5-Maven-with-YARN</argument>
+
+            <argument>-Dspark.test.jenkins.url.base=https://builds.apache.org/job</argument>
+            <argument>-Dspark.test.jenkinsProjects=Hadoop-Common-trunk</argument>
+            <argument>-Dspark.test.packages=org.apache.hadoop</argument>
             <argument>-Dspark.test.outputFileName=jenkins.txt</argument>
-            <argument>-Dspark.test.outputFileDelimiter=, </argument>
-            <argument>-Dspark.test.outputFileDelimiter=, </argument>
-            <argument>-Dspark.test.packages=org.apache.spark</argument>
-            <argument>-Dspark.test.fetcher.maxTestAge.seconds=172800</argument>
+            <argument>-Dspark.test.fetcher.maxTestAge.seconds=432000</argument>
             <argument>com.databricks.fetcher.JenkinsFetcher</argument>
           </arguments>
         </configuration>

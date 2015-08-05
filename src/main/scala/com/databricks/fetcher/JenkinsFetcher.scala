@@ -93,7 +93,9 @@ class JenkinsFetcher(
   // e.g. .../Spark-Master-Maven-pre-YARN/1760
   private def handleBuild(buildUrl: String, projectName: String): (Int, Int) = {
     val buildJson = fetchJson(buildUrl).getOrElse { return  (0, 0) }
-    val buildTimestamp = buildJson.get("timestamp").asLong
+    val buildUrlJson = toJsonURL(buildUrl)
+
+    val buildTimestamp = getJsonField(buildUrlJson, buildJson, "timestamp").asLong
     val buildTooOld = System.currentTimeMillis - buildTimestamp > maxTestAgeMillis
     var successCount = 0
     var attemptCount = 0
@@ -104,16 +106,17 @@ class JenkinsFetcher(
         attemptCount += 1
         successCount += (if (handleRun(buildUrl, projectName)) 1 else 0)
       } else {
-        val runsJson = buildJson.get("runs")
-        if (runsJson.size()> 0) {
 
+        val runsJson = getJsonField(buildUrlJson, buildJson, "runs")
+        if (runsJson.size()> 0) {
           runsJson.iterator.foreach { runJson =>
             attemptCount += 1
-            val runUrl = runJson.get("url").asText.stripSuffix("/")
+            val runUrl = getJsonField(buildUrlJson+":runs", runJson, "url").asText.stripSuffix("/")
             successCount += (if (handleRun(buildUrl, projectName)) 1 else 0)
           }
         } else {
           logInfo(s"Project $projectName has no runs")
+          logDebug(s"Contents of $buildUrlJson:\n$buildJson")
         }
       }
     } else {
@@ -363,7 +366,7 @@ private object JenkinsFetcher extends Logging {
 
     val jenkins_url_base = requiredProperty(JENKINS_URL_BASE)
     val outputFileName = requiredProperty("spark.test.outputFileName").trim
-    val outputFileDelimiter = requiredProperty("spark.test.outputFileDelimiter")
+    val outputFileDelimiter = optionalProperty("spark.test.outputFileDelimiter", ", ")
     val packages = requiredProperty("spark.test.packages").trim
     val beforeEntry = optionalProperty("spark.test.delimiter.before","\"")
     val afterEntry = optionalProperty("spark.test.delimiter.after","\"")
