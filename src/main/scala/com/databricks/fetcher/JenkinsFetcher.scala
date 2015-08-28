@@ -384,7 +384,7 @@ private object JenkinsFetcher extends Logging {
     val (attempts, successes) = fetcher.run()
     fetcher.stop()
     println(s"$attempts attempts; $successes successes")
-    if (successes > 0) 0 else 1
+    if (attempts == successes)  0 else 1
   }
 
   
