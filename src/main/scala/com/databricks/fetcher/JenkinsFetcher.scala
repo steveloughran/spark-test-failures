@@ -1,6 +1,6 @@
 package com.databricks.fetcher
 
-import java.io.{IOException, FileNotFoundException, FileWriter}
+import java.io.{FileNotFoundException, FileWriter}
 import java.net.URL
 import java.util.Date
 
@@ -129,7 +129,7 @@ class JenkinsFetcher(
     document.get(field) match {
       case null =>
         val text = s"No field '$field' in JSON at $url"
-        logDebug(text + "\n" + document.toString)
+        logDebug(text + "\n" + toPrettyJson(document))
         throw new RuntimeException(text)
       case node => node
     }
@@ -237,7 +237,8 @@ class JenkinsFetcher(
 
   /** Return true if this project refers to the Spark pull request builder. */
   private def isPullRequestBuilder(projectName: String): Boolean = {
-    projectName.contains("SparkPullRequestBuilder")
+    true
+    //    projectName.contains("SparkPullRequestBuilder")
   }
 
   /** Fetch the content of the specified URL and parse it as a JsonNode. */
@@ -263,6 +264,15 @@ class JenkinsFetcher(
 
   def toJsonURL(url: String): String = {
     url.stripSuffix("/") + "/" + JSON_URL_SUFFIX
+  }
+
+  /**
+   * Convert the pretty JSON
+   * @param json json source
+   * @return pretty version
+   */
+  def toPrettyJson(json: JsonNode): String = {
+     jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json)
   }
 
   /** Return a shorter, relative URL that does not include the Jenkins base URL. */
