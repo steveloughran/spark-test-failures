@@ -6,7 +6,7 @@
   <packaging>jar</packaging>
   <version>1.0</version>
   <properties>
-    <spark.version>1.4.1</spark.version>
+    <spark.version>1.5.1</spark.version>
   </properties>
   <repositories>
     <repository>
