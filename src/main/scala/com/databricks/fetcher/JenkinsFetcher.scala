@@ -11,6 +11,7 @@ import scala.collection.mutable
 import com.databricks.util.{FailedSuite, PropertiesReader}
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import org.apache.commons.io.IOUtils
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.util.ExitUtil.ExitException
 
 import org.apache.spark.Logging
@@ -21,6 +22,7 @@ import org.apache.spark.Logging
  * a single instance of a failed suite.
  */
 class JenkinsFetcher(
+    val conf: Configuration,
     val urlbase: String,
     val allJenkinsProjects: Seq[String],
     val outputFileName: String,
@@ -311,7 +313,7 @@ class JenkinsFetcher(
 
   /** Log a message with the appropriate indentation. */
   private def log(msg: String): Unit = {
-    println(indent + msg)
+    logInfo(indent + msg)
   }
 
   /** Execute the given code block at appropriate level of indentation. */
@@ -345,8 +347,8 @@ private object JenkinsFetcher extends Logging {
       | 'spark.test.fetcher.maxTestAge.seconds' maximum age of test runs, e.g. '600'
     """.stripMargin
   
-  def requiredProperty(key: String): String = {
-    sys.props(key) match {
+  def requiredProperty(conf: Configuration, key: String): String = {
+    conf.get(key) match {
       case null => throw new ExitException(1, s"Unset property '$key'\n$USAGE")
       case "" => throw new ExitException(1, s"Empty property '$key'\n$USAGE")
       case prop => prop
@@ -359,31 +361,29 @@ private object JenkinsFetcher extends Logging {
    * @param defVal default value
    * @return a string
    */
-  def optionalProperty(key: String, defVal: String): String = {
-    sys.props(key) match {
-      case null => defVal
-      case prop => prop
-    }
+  def optionalProperty(conf: Configuration, key: String, defVal: String): String = {
+    conf.get(key, defVal)
   }
   
   def innerMain(args: Array[String]): Int = {
     println("\n=== *~ Welcome to Spark test failure fetcher v1.0! ~* ===\n")
-    PropertiesReader.loadSystemProperties()
-    val allJenkinsProjects = requiredProperty("spark.test.jenkinsProjects")
+    val conf = PropertiesReader.loadTestProperties()
+    val allJenkinsProjects = requiredProperty(conf, "spark.test.jenkinsProjects")
       .split(",")
       .map(_.trim)
       .filter(_.nonEmpty)
 
-    val jenkins_url_base = requiredProperty(JENKINS_URL_BASE)
-    val outputFileName = requiredProperty("spark.test.outputFileName").trim
-    val outputFileDelimiter = optionalProperty("spark.test.outputFileDelimiter", ", ")
-    val packages = requiredProperty("spark.test.packages").trim
-    val beforeEntry = optionalProperty("spark.test.delimiter.before","\"")
-    val afterEntry = optionalProperty("spark.test.delimiter.after","\"")
-    val emptyEntry = optionalProperty("spark.test.empty.column","")
+    val jenkins_url_base = requiredProperty(conf, JENKINS_URL_BASE)
+    val outputFileName = requiredProperty(conf, "spark.test.outputFileName").trim
+    val outputFileDelimiter = optionalProperty(conf, "spark.test.outputFileDelimiter", ", ")
+    val packages = requiredProperty(conf, "spark.test.packages").trim
+    val beforeEntry = optionalProperty(conf, "spark.test.delimiter.before","\"")
+    val afterEntry = optionalProperty(conf, "spark.test.delimiter.after","\"")
+    val emptyEntry = optionalProperty(conf, "spark.test.empty.column","")
 
-    val maxTestAgeSeconds = requiredProperty("spark.test.fetcher.maxTestAge.seconds").toLong
+    val maxTestAgeSeconds = conf.getLong("spark.test.fetcher.maxTestAge.seconds", 0)
     val fetcher = new JenkinsFetcher(
+      conf,
       jenkins_url_base,
       allJenkinsProjects,
       outputFileName,

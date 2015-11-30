@@ -3,7 +3,6 @@ package com.databricks.reporter
 import java.io.File
 import java.net.URL
 import java.text.DateFormat
-import java.util.Date
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -239,15 +238,14 @@ private object GoogleSpreadsheetReporter {
 
   def main(args: Array[String]): Unit = {
     println("\n=== *~ Welcome to Spark test failure reporter v1.0! ~* ===\n")
-    PropertiesReader.loadSystemProperties()
-    val allJenkinsProjects = sys.props("spark.test.jenkinsProjects")
-      .split(",")
+    val props = PropertiesReader.loadTestProperties()
+    val allJenkinsProjects = props.getStrings("spark.test.jenkinsProjects", "")
       .map(_.trim)
       .filter(_.nonEmpty)
-    val outputFileName = sys.props("spark.test.outputFileName")
-    val outputFileDelimiter = sys.props("spark.test.outputFileDelimiter")
+    val outputFileName = props.get("spark.test.outputFileName")
+    val outputFileDelimiter = props.get("spark.test.outputFileDelimiter")
     val serviceAccountId =
-      sys.props.get("spark.test.reporter.google.serviceAccountId").getOrElse {
+      Option(props.get("spark.test.reporter.google.serviceAccountId")).getOrElse {
         throw new IllegalArgumentException(
           """
             |
@@ -260,7 +258,7 @@ private object GoogleSpreadsheetReporter {
           """.stripMargin)
       }
     val privateKeyPath =
-      sys.props.get("spark.test.reporter.google.privateKeyPath").getOrElse {
+      Option(props.get("spark.test.reporter.google.privateKeyPath")).getOrElse {
         throw new IllegalArgumentException(
           """
             |
@@ -271,9 +269,9 @@ private object GoogleSpreadsheetReporter {
             |
           """.stripMargin)
       }
-    val existingSpreadsheetId = sys.props.get("spark.test.reporter.google.spreadsheetId")
+    val existingSpreadsheetId = Option(props.get("spark.test.reporter.google.spreadsheetId"))
     val newSpreadsheetOwners =
-      sys.props.get("spark.test.reporter.google.spreadsheetOwners")
+      Option(props.get("spark.test.reporter.google.spreadsheetOwners"))
         .getOrElse("")
         .split(",")
         .filter(_.nonEmpty)
