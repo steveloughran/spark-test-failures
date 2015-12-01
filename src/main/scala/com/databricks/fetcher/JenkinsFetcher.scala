@@ -29,10 +29,9 @@ class JenkinsFetcher(
     val outputFileDelimiter: String,
     maxTestAgeSeconds: Long,
     val packages: String,
-    val emptyString: String = "N/A") extends Logging{
+    val emptyString: String = "N/A") extends Logging {
+
   import JenkinsFetcher._
-
-
 
   private val jsonMapper = new ObjectMapper
   private val writer = new FileWriter(outputFileName)
@@ -73,21 +72,31 @@ class JenkinsFetcher(
   // e.g. https://amplab.cs.berkeley.edu/jenkins/job/Spark-Master-SBT
   // e.g. https://amplab.cs.berkeley.edu/jenkins/job/Spark-Master-Maven-pre-YARN/
   private def handleProject(projectUrl: String, projectName: String): (Int, Int) = {
-    log(s"========== Fetching test reports for project $projectName ==========")
+    logInfo(s"========== Fetching test reports for project $projectName ==========")
     val projectJson = fetchJson(projectUrl).getOrElse { return (0, 0) }
-    val firstBuild = projectJson.get("firstBuild").get("number").asInt
-    val lastBuild = projectJson.get("lastBuild").get("number").asInt
-    assert(lastBuild >= firstBuild)
-    log(s"number of test runs: ${lastBuild - firstBuild}")
+    val buildNumbers = parseProjectReport(projectJson)
     var successCount = 0
     var attemptCount = 0
-    (firstBuild to lastBuild).reverse.foreach { buildNumber =>
+    buildNumbers.foreach { buildNumber =>
       val buildUrl = s"${projectUrl}/$buildNumber"
       val (attempts, successes) = handleBuild(buildUrl, projectName)
       attemptCount += attempts
       successCount += successes
     }
     (attemptCount, successCount)
+  }
+
+  /**
+   * Parse the JSON project report to extrat build numbers
+   * @param projectJson json doc
+   * @return the parsed report
+   */
+  def parseProjectReport(projectJson: JsonNode): Seq[Int] = {
+    val firstBuild = projectJson.get ("firstBuild").get ("number").asInt
+    val lastBuild = projectJson.get ("lastBuild").get ("number").asInt
+    assert (lastBuild >= firstBuild)
+    log (s"${lastBuild - firstBuild} test runs: $lastBuild to $firstBuild")
+    (firstBuild to lastBuild).reverse
   }
 
   // e.g. .../SparkPullRequestBuilder/28354
@@ -137,6 +146,14 @@ class JenkinsFetcher(
     }
   }
 
+  /**
+   * Recurse though the doc. If there's a failure, the exception includes the whole doc.
+   * Which is the main reason for not using the JSON DSL: error reporting.
+   * @param url for error text, has ":$field" appended
+   * @param document current document or subset thereof
+   * @param fields list of fields
+   * @return the final field at the end of the path.
+   */
   @tailrec
   private def getJsonFields(url: String, document: JsonNode, fields: List[String]): JsonNode = {
     fields match {
@@ -249,9 +266,8 @@ class JenkinsFetcher(
       val jsonUrl = toJsonURL(url)
       val src = new URL(jsonUrl)
       log(s"GET $src")
-      val jsonString = IOUtils.toString(src.openStream)
       // read operation closes stream afterwards
-      return Some(jsonMapper.readValue(jsonString, classOf[JsonNode]))
+      return Some(jsonMapper.readTree(src.openStream))
     } catch {
       case fnf: FileNotFoundException =>
         log(s"Unable to find JSON at $url")
@@ -262,6 +278,12 @@ class JenkinsFetcher(
         wrapForIndentation { log(e.toString) }
     }
     None
+  }
+
+  def loadJsonResource(resource: String): JsonNode = {
+    val in = this.getClass.getClassLoader.getResourceAsStream(resource)
+    require(in != null, s"Failed to load resource $resource")
+    jsonMapper.readTree(in)
   }
 
   def toJsonURL(url: String): String = {

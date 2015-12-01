@@ -1,0 +1,84 @@
+{
+  "actions": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+  ],
+  "description": "Slider is a collection of tools and technologies to package, deploy, and manage long running applications on Apache Hadoop YARN clusters.",
+  "displayName": "Slider-develop",
+  "displayNameOrNull": null,
+  "name": "Slider-develop",
+  "url": "https://builds.apache.org/job/Slider-develop/",
+  "buildable": true,
+  "builds": [
+    {
+      "number": 738,
+      "url": "https://builds.apache.org/job/Slider-develop/738/"
+    },
+    {
+      "number": 737,
+      "url": "https://builds.apache.org/job/Slider-develop/737/"
+    }
+  ],
+  "color": "blue",
+  "firstBuild": {
+    "number": 737,
+    "url": "https://builds.apache.org/job/Slider-develop/737/"
+  },
+  "healthReport": [
+    {
+      "description": "Build stability: 1 out of the last 2 builds failed.",
+      "iconClassName": "icon-health-40to59",
+      "iconUrl": "health-40to59.png",
+      "score": 50
+    },
+    {
+      "description": "Test Result: 0 tests failing out of a total of 553 tests.",
+      "iconClassName": "icon-health-80plus",
+      "iconUrl": "health-80plus.png",
+      "score": 100
+    }
+  ],
+  "inQueue": false,
+  "keepDependencies": false,
+  "lastBuild": {
+    "number": 738,
+    "url": "https://builds.apache.org/job/Slider-develop/738/"
+  },
+  "lastCompletedBuild": {
+    "number": 738,
+    "url": "https://builds.apache.org/job/Slider-develop/738/"
+  },
+  "lastFailedBuild": {
+    "number": 737,
+    "url": "https://builds.apache.org/job/Slider-develop/737/"
+  },
+  "lastStableBuild": {
+    "number": 738,
+    "url": "https://builds.apache.org/job/Slider-develop/738/"
+  },
+  "lastSuccessfulBuild": {
+    "number": 738,
+    "url": "https://builds.apache.org/job/Slider-develop/738/"
+  },
+  "lastUnstableBuild": null,
+  "lastUnsuccessfulBuild": {
+    "number": 737,
+    "url": "https://builds.apache.org/job/Slider-develop/737/"
+  },
+  "nextBuildNumber": 739,
+  "property": [
+    {},
+    {},
+    {}
+  ],
+  "queueItem": null,
+  "concurrentBuild": false,
+  "downstreamProjects": [],
+  "scm": {},
+  "upstreamProjects": []
+}

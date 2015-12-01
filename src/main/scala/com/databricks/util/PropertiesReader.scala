@@ -1,10 +1,9 @@
 package com.databricks.util
 
 import java.io.{FileNotFoundException, File, FileInputStream}
-import java.util.Properties
+import java.util.{Locale, Properties}
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 
 import org.apache.hadoop.conf.Configuration
 
@@ -14,7 +13,8 @@ private[databricks] object PropertiesReader {
 
   /**
    * For each ".properties" file in the "conf" directory, load the properties
-   * set in that file and set them in this JVM's system properties.
+   * set in that file and merge them.
+   * Files are sported by their case-insensitive filenames
    */
   def loadTestProperties(): Configuration = {
     val confdirName = System.getProperty(SPARK_TEST_CONF_DIR, new File("conf").getAbsolutePath)
@@ -25,12 +25,13 @@ private[databricks] object PropertiesReader {
     }
     val dest = new Configuration(false)
     confDir.listFiles()
-      .filter { f => f.getName.endsWith(".properties") }
-      .foreach { pf => loadProperties(pf, dest) }
+        .filter { f => f.getName.endsWith(".properties") }
+        .sortWith ( (l, r) =>
+          (l.getAbsolutePath.toLowerCase(Locale.ENGLISH)
+          .compareTo(r.getAbsolutePath.toLowerCase(Locale.ENGLISH))) < 0)
+        .foreach { pf => loadProperties(pf, dest) }
     // apply to all
-    val map = dest.asScala
-    map.foreach { case (k, v) => sys.props.update(k, v) }
-    return dest
+    dest
   }
 
   /**
@@ -42,7 +43,7 @@ private[databricks] object PropertiesReader {
     val in = new FileInputStream(propertiesFile)
     try {
       properties.load(in)
-      properties.asScala.foreach { case (k, v) => dest.set(k, v) }
+      properties.asScala.foreach { entry => dest.set(entry._1, entry._2) }
     } finally {
       in.close()
     }
