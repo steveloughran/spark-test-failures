@@ -17,12 +17,13 @@
 
 package com.databricks.fetcher
 
-import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
-import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import org.apache.hadoop.conf.Configuration
-import org.scalatest.{Assertions, FunSuite}
+import org.scalatest.{Assertions, BeforeAndAfter, FunSuite, Matchers}
 
-class JenkinsFetcherSuite extends FunSuite with Assertions {
+import org.apache.spark.Logging
+
+class JenkinsFetcherSuite extends FunSuite with Assertions with Matchers with BeforeAndAfter
+  with Logging {
 
   /** project summary */
   val SLIDER_PROJECT = "slider-project.json"
@@ -31,18 +32,29 @@ class JenkinsFetcherSuite extends FunSuite with Assertions {
   /** a test run with a successful build */
   val SLIDER_737 = "slider-737-run.json"
 
-  test("ParseProjectReport") {
-    val jenkins = new JenkinsFetcher(new Configuration(false),
+  val SLIDER_URL = "https://builds.apache.org/job/Slider-develop/"
+
+  var jenkins: JenkinsFetcher = _
+
+  before {
+    jenkins = new JenkinsFetcher(new Configuration(false),
       "http://builds.apache.org",
       Seq("Slider"),
       "jenkins.csv",
       ", ",
       1000,
       "org.apache")
+  }
 
-    val builds = jenkins.parseProjectReport(jenkins.loadJsonResource(SLIDER_PROJECT))
-    assert(Seq(738, 737) === builds)
+  test("ParseProjectReport") {
+    jenkins.parseProjectReport(jenkins.loadJsonResource(SLIDER_PROJECT)) should be (Seq(738, 737))
+  }
+
+  test("Parse-build-738") {
+    val json = jenkins.loadJsonResource(SLIDER_738)
+    val buildReport = jenkins.parseBuildReport(SLIDER_URL,"slider", json, 0 )
 
   }
+
 
 }

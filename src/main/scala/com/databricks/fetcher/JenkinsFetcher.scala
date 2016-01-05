@@ -10,6 +10,9 @@ import scala.collection.mutable
 
 import com.databricks.util.{FailedSuite, PropertiesReader}
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import org.json4s.jackson.JsonMethods._
+import org.json4s.JsonAST.JArray
+
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.util.ExitUtil.ExitException
@@ -103,16 +106,21 @@ class JenkinsFetcher(
   // e.g. .../Spark-Master-SBT/1847
   // e.g. .../Spark-Master-Maven-pre-YARN/1760
   private def handleBuild(buildUrl: String, projectName: String): (Int, Int) = {
-    val buildJson = fetchJson(buildUrl).getOrElse { return  (0, 0) }
-    val buildUrlJson = toJsonURL(buildUrl)
+    val buildJson = fetchJson(buildUrl).getOrElse {return (0, 0)}
+    parseBuildReport(buildUrl, projectName, buildJson, System.currentTimeMillis)
+  }
 
+  def parseBuildReport(buildUrl: String, projectName: String, buildJson: JsonNode,
+      currentTime:Long): (Int, Int) = {
+    val buildUrlJson = toJsonURL(buildUrl)
+    buildJson \\ "timestamp"
     val buildTimestamp = getJsonField(buildUrlJson, buildJson, "timestamp").asLong
     val buildTooOld = System.currentTimeMillis - buildTimestamp > maxTestAgeMillis
     var successCount = 0
     var attemptCount = 0
     if (!buildTooOld) {
       // Each build in the pull request builder only has one run, so use the build URL directly
-      if (isPullRequestBuilder(projectName)) {
+      if (isSingleRun(projectName)) {
         logDebug("Pull request Builder")
         attemptCount += 1
         successCount += (if (handleRun(buildUrl, projectName)) 1 else 0)
@@ -240,7 +248,7 @@ class JenkinsFetcher(
     }
 
     val hadoopProfile =
-      if (isPullRequestBuilder(projectName)) {
+      if (isSingleRun(projectName)) {
         pull_request_builder_hadoop_profile
       } else {
         parseHadoopProfile(runUrl)
@@ -255,7 +263,7 @@ class JenkinsFetcher(
   }
 
   /** Return true if this project refers to the Spark pull request builder. */
-  private def isPullRequestBuilder(projectName: String): Boolean = {
+  private def isSingleRun(projectName: String): Boolean = {
     true
     //    projectName.contains("SparkPullRequestBuilder")
   }

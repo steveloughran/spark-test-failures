@@ -6,7 +6,7 @@
   <packaging>jar</packaging>
   <version>1.0</version>
   <properties>
-    <spark.version>1.5.1</spark.version>
+    <spark.version>1.6.0</spark.version>
     <maven.properties.version>1.0-alpha-2</maven.properties.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
