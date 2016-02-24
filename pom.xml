@@ -7,6 +7,7 @@
   <version>1.0</version>
   <properties>
     <spark.version>1.6.0</spark.version>
+    <hadoop.version>2.7.2</hadoop.version>
     <maven.properties.version>1.0-alpha-2</maven.properties.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -89,6 +90,12 @@
       <version>4.11</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-aws</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
   </dependencies>
   <build>
     <sourceDirectory>src/main/scala</sourceDirectory>
@@ -312,6 +319,8 @@
         </executions>
         <configuration>
           <mainClass>com.databricks.fetcher.JenkinsFetcher</mainClass>
+          <workingDirectory>target</workingDirectory>
+
 
           <arguments>
 

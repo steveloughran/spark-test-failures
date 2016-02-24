@@ -3,3 +3,4 @@
 *csv
 target/
 secrets.properties
+build.properties
